@@ -10,9 +10,6 @@ COPY package*.json ./
 # Install dependencies
 RUN npm install
 
-# Build aplikasi (kalau ada proses build)
-RUN npm run build
-
 # Salin semua file ke dalam container
 COPY . .
 
