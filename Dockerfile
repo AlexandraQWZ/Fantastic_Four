@@ -10,11 +10,11 @@ COPY package*.json ./
 # Install dependencies
 RUN npm install
 
-# Salin semua file ke dalam container
-COPY . .
-
 # Build aplikasi (kalau ada proses build)
 RUN npm run build
+
+# Salin semua file ke dalam container
+COPY . .
 
 # Buka port default (sesuaikan dengan aplikasi)
 EXPOSE 3000
