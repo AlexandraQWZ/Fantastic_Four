@@ -95,38 +95,29 @@ app.get('/', async (req, res) => {
     }
 });
 
-// Route untuk handle form submission
+// Add new question
 app.post('/', async (req, res) => {
     console.log('📨 Received POST request to /');
-    console.log('📦 Request body:', req.body);
-    
     const { category, content } = req.body;
-    
-    if (!category || !content) {
-        console.log('❌ Missing category or content');
-        return res.redirect('/');
-    }
     
     if (pool) {
         try {
-            const result = await pool.query(
-                'INSERT INTO devkitty_questions (category, content) VALUES ($1, $2) RETURNING *',
+            await pool.query(
+                'INSERT INTO devkitty_questions (category, content) VALUES ($1, $2)',
                 [category, content]
             );
-            console.log('✅ Question saved to PostgreSQL:', result.rows[0]);
+            console.log('✅ Question saved to PostgreSQL');
         } catch (error) {
             console.error('❌ Failed to save to PostgreSQL:', error);
-            // Fallback to sample data jika database error
+            // Fallback to sample data
             sampleQuestions.push({
                 id: Date.now(),
                 category: category,
                 content: content,
                 created_at: new Date()
             });
-            console.log('💡 Question saved to fallback data due to DB error');
         }
     } else {
-        // Add to sample data
         sampleQuestions.push({
             id: Date.now(),
             category: category,
@@ -139,37 +130,89 @@ app.post('/', async (req, res) => {
     res.redirect('/');
 });
 
-// Juga keep route /addQuestion untuk compatibility
-app.post('/addQuestion', async (req, res) => {
-    console.log('📨 Received POST request to /addQuestion');
-    console.log('📦 Request body:', req.body);
+// 🆕 EDIT QUESTION - Show edit form
+app.get('/edit/:id', async (req, res) => {
+    const id = req.params.id;
+    console.log('✏️ Edit request for question:', id);
     
+    try {
+        let question = null;
+        
+        if (pool) {
+            const result = await pool.query('SELECT * FROM devkitty_questions WHERE id = $1', [id]);
+            if (result.rows.length > 0) {
+                question = result.rows[0];
+            }
+        } else {
+            question = sampleQuestions.find(q => q.id == id);
+        }
+        
+        if (!question) {
+            return res.redirect('/');
+        }
+        
+        res.render('edit.ejs', { question: question });
+    } catch (error) {
+        console.error('Error loading question for edit:', error);
+        res.redirect('/');
+    }
+});
+
+// 🆕 UPDATE QUESTION - Process edit form
+app.post('/update/:id', async (req, res) => {
+    const id = req.params.id;
     const { category, content } = req.body;
+    console.log('🔄 Update request for question:', id);
     
     if (pool) {
         try {
             await pool.query(
-                'INSERT INTO devkitty_questions (category, content) VALUES ($1, $2)',
-                [category, content]
+                'UPDATE devkitty_questions SET category = $1, content = $2 WHERE id = $3',
+                [category, content, id]
             );
-            console.log('✅ Question saved to PostgreSQL via /addQuestion');
+            console.log('✅ Question updated in PostgreSQL');
         } catch (error) {
-            console.error('❌ Failed to save to PostgreSQL:', error);
+            console.error('❌ Failed to update question:', error);
         }
     } else {
-        sampleQuestions.push({
-            id: Date.now(),
-            category: category,
-            content: content,
-            created_at: new Date()
-        });
-        console.log('💡 Question saved to fallback data via /addQuestion');
+        const index = sampleQuestions.findIndex(q => q.id == id);
+        if (index !== -1) {
+            sampleQuestions[index] = {
+                ...sampleQuestions[index],
+                category: category,
+                content: content
+            };
+            console.log('💡 Question updated in fallback data');
+        }
     }
     
     res.redirect('/');
 });
 
-// Health check endpoint
+// 🆕 DELETE QUESTION
+app.post('/delete/:id', async (req, res) => {
+    const id = req.params.id;
+    console.log('🗑️ Delete request for question:', id);
+    
+    if (pool) {
+        try {
+            await pool.query('DELETE FROM devkitty_questions WHERE id = $1', [id]);
+            console.log('✅ Question deleted from PostgreSQL');
+        } catch (error) {
+            console.error('❌ Failed to delete from PostgreSQL:', error);
+        }
+    } else {
+        const index = sampleQuestions.findIndex(q => q.id == id);
+        if (index !== -1) {
+            sampleQuestions.splice(index, 1);
+            console.log('💡 Question deleted from fallback data');
+        }
+    }
+    
+    res.redirect('/');
+});
+
+// Health check
 app.get('/health', async (req, res) => {
     let dbStatus = 'disconnected';
     let rowCount = 0;
@@ -193,14 +236,7 @@ app.get('/health', async (req, res) => {
     });
 });
 
-// 404 handler
-app.use((req, res) => {
-    console.log('❌ Route not found:', req.method, req.url);
-    res.status(404).send('Page not found');
-});
-
 app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
-    console.log('💡 Application ready!');
-    console.log('📝 POST routes: / and /addQuestion');
+    console.log('💡 Edit & Delete features added!');
 });
