@@ -1,66 +1,82 @@
-//Declare variables 
-const express = require("express") //returns a function reference, that function is called with express()
-const app = express() //app is an object returned by express();
-const PORT = process.env.PORT || 3000; //setting up the listening port
+// Declare variables 
+const express = require("express");
+const app = express();
+const PORT = process.env.PORT || 3000;
 const MongoClient = require('mongodb').MongoClient;
-// const mongoose = require('mongoose')
-// const DevKittyQ = require('./models/DevKittyQ') //DevKittyQ is where the mongoose models live
-require('dotenv').config()//Things we want to keep private such as connection string to mongodb.
+require('dotenv').config();
 
-let db,
-dbConnectionStr = process.env.DB_STRING,
-dbName = 'DevKitty';
+let db;
+const dbConnectionStr = process.env.DB_STRING || "mongodb://127.0.0.1:27017/devkitty";
+const dbName = 'devkitty';
 
-try {
-  const mongoAtlasLogin = require('./config.js');
-  dbConnectionStr = process.env.DB_STRING || "mongodb://localhost:27017/devkitty";
-} catch(error) {
-  console.error(error)
-}
+// Set middleware
+app.set("view engine", "ejs");
+app.use(express.static('public'));
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
 
-MongoClient.connect(dbConnectionStr, { useUnifiedTopology: true })
-  .then(client => {
-      console.log(`Connected to ${dbName} Database`)
-      db = client.db(dbName)
+// Connect to MongoDB
+MongoClient.connect(dbConnectionStr, { 
+    useUnifiedTopology: true,
+    useNewUrlParser: true
 })
+.then(client => {
+    console.log(`Connected to ${dbName} Database`);
+    db = client.db(dbName);
+    
+    // Start server only after DB connection
+    app.listen(PORT, () => {
+        console.log(`Server is running on port ${PORT}`);
+    });
+})
+.catch(error => {
+    console.error('Database connection error:', error);
+    process.exit(1);
+});
 
-//Set middleware
-app.set("view engine", "ejs") //establishing our view engine and ask it to use ejs
-app.use(express.static('public')) //Hey Express, if you need files that are client facing, look in public.
-app.use(express.urlencoded({extended: true})) //helps validate the right type of data back and forth. Extended: true allows us to send more complex objects like arrays etc.
-
+// Routes
 app.get('/', async (req, res) => {
-    const todoItems = await db.collection('DevKittyQuestions').find().toArray()
-    const itemsLeft = await db.collection('DevKittyQuestions').countDocuments()
-    res.render('index.ejs', { items: todoItems, left: itemsLeft })
+    try {
+        if (!db) {
+            return res.status(500).send('Database not connected');
+        }
+        
+        const todoItems = await db.collection('DevKittyQuestions').find().toArray();
+        const itemsLeft = await db.collection('DevKittyQuestions').countDocuments();
+        res.render('index.ejs', { items: todoItems, left: itemsLeft });
+    } catch (error) {
+        console.error('Error fetching data:', error);
+        res.status(500).send('Error loading page');
+    }
 });
 
-app.get('/', (req, res) => {
-    const todoItems = [
-        { category: "General", content: "Apa itu Node.js?" },
-        { category: "JS", content: "Bagaimana cara async/await bekerja?" }
-    ];
-    const itemsLeft = todoItems.length;
-    res.render('index.ejs', { items: todoItems, left: itemsLeft });
-});
+app.post('/addQuestion', (req, res) => {
+    if (!db) {
+        return res.status(500).json({ error: 'Database not connected' });
+    }
 
-app.post('/', (req, res) => {
-  db.collection('DevKittyQuestions').insertOne(
-      {
+    db.collection('DevKittyQuestions').insertOne({
         category: req.body.category,
-        content: req.body.content
-      })
-  .then(result => {
-      console.log('Question Added')
-      res.redirect('/')
-  })
-  .catch(error => console.error(error))
-})  
+        content: req.body.content,
+        createdAt: new Date()
+    })
+    .then(result => {
+        console.log('Question Added');
+        res.redirect('/');
+    })
+    .catch(error => {
+        console.error('Error adding question:', error);
+        res.status(500).send('Error adding question');
+    });
+});
 
+// Error handling middleware
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).send('Something broke!');
+});
 
-
-
-
-
-app.listen(PORT, () => console.log(`Server is running on port ${PORT}`)) //helps to initialize the server
-
+// 404 handler
+app.use((req, res) => {
+    res.status(404).send('Page not found');
+});
