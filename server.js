@@ -3,14 +3,23 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const { Pool } = require('pg');
 
+// STARTUP LOGGING
+console.log("Server initialization started at:", new Date().toISOString());
+console.log("Environment:", process.env.NODE_ENV || "development");
+console.log('Environment Variables:');
+console.log('- DATABASE_URL:', process.env.DATABASE_URL ? 'Available' : 'Not available');
+
+// REQUEST LOGGER
+app.use((req, res, next) => {
+    console.log(`${req.method} ${req.url} at ${new Date().toISOString()}`);
+    next();
+});
+
 // Middleware
 app.set("view engine", "ejs");
 app.use(express.static('public'));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-
-console.log('🔧 Environment Variables:');
-console.log('- DATABASE_URL:', process.env.DATABASE_URL ? 'Available' : 'Not available');
 
 // Setup PostgreSQL connection
 let pool;
@@ -23,7 +32,7 @@ if (process.env.DATABASE_URL) {
     const initializeDatabase = async () => {
         try {
             const client = await pool.connect();
-            console.log('✅ Connected to PostgreSQL successfully!');
+            console.log('Connected to PostgreSQL successfully!');
             
             await client.query(`
                 CREATE TABLE IF NOT EXISTS devkitty_questions (
@@ -33,11 +42,11 @@ if (process.env.DATABASE_URL) {
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             `);
-            console.log('📊 Database table ready');
+            console.log('Database table ready');
             
             client.release();
         } catch (error) {
-            console.error('❌ Database initialization error:', error.message);
+            console.error('Database initialization error:', error.message);
         }
     };
     
@@ -73,7 +82,7 @@ app.get('/', async (req, res) => {
                 items = result.rows;
                 left = items.length;
                 dbStatus = 'connected';
-                console.log('📊 Data loaded from PostgreSQL');
+                console.log('Data loaded from PostgreSQL');
             } catch (dbError) {
                 console.error('Database query error:', dbError);
             }
@@ -97,7 +106,7 @@ app.get('/', async (req, res) => {
 
 // Add new question
 app.post('/', async (req, res) => {
-    console.log('📨 Received POST request to /');
+    console.log('Received POST request to /');
     const { category, content } = req.body;
     
     if (pool) {
@@ -106,10 +115,9 @@ app.post('/', async (req, res) => {
                 'INSERT INTO devkitty_questions (category, content) VALUES ($1, $2)',
                 [category, content]
             );
-            console.log('✅ Question saved to PostgreSQL');
+            console.log('Question saved to PostgreSQL');
         } catch (error) {
-            console.error('❌ Failed to save to PostgreSQL:', error);
-            // Fallback to sample data
+            console.error('Failed to save to PostgreSQL:', error);
             sampleQuestions.push({
                 id: Date.now(),
                 category: category,
@@ -130,10 +138,10 @@ app.post('/', async (req, res) => {
     res.redirect('/');
 });
 
-// 🆕 EDIT QUESTION - Show edit form
+// EDIT QUESTION - Show edit form
 app.get('/edit/:id', async (req, res) => {
     const id = req.params.id;
-    console.log('✏️ Edit request for question:', id);
+    console.log('Edit request for question:', id);
     
     try {
         let question = null;
@@ -158,11 +166,11 @@ app.get('/edit/:id', async (req, res) => {
     }
 });
 
-// 🆕 UPDATE QUESTION - Process edit form
+// UPDATE QUESTION - Process edit form
 app.post('/update/:id', async (req, res) => {
     const id = req.params.id;
     const { category, content } = req.body;
-    console.log('🔄 Update request for question:', id);
+    console.log('Update request for question:', id);
     
     if (pool) {
         try {
@@ -170,9 +178,9 @@ app.post('/update/:id', async (req, res) => {
                 'UPDATE devkitty_questions SET category = $1, content = $2 WHERE id = $3',
                 [category, content, id]
             );
-            console.log('✅ Question updated in PostgreSQL');
+            console.log('Question updated in PostgreSQL');
         } catch (error) {
-            console.error('❌ Failed to update question:', error);
+            console.error('Failed to update question:', error);
         }
     } else {
         const index = sampleQuestions.findIndex(q => q.id == id);
@@ -182,37 +190,37 @@ app.post('/update/:id', async (req, res) => {
                 category: category,
                 content: content
             };
-            console.log('💡 Question updated in fallback data');
+            console.log('Question updated in fallback data');
         }
     }
     
     res.redirect('/');
 });
 
-// 🆕 DELETE QUESTION
+// DELETE QUESTION
 app.post('/delete/:id', async (req, res) => {
     const id = req.params.id;
-    console.log('🗑️ Delete request for question:', id);
+    console.log(' Delete request for question:', id);
     
     if (pool) {
         try {
             await pool.query('DELETE FROM devkitty_questions WHERE id = $1', [id]);
-            console.log('✅ Question deleted from PostgreSQL');
+            console.log(' Question deleted from PostgreSQL');
         } catch (error) {
-            console.error('❌ Failed to delete from PostgreSQL:', error);
+            console.error(' Failed to delete from PostgreSQL:', error);
         }
     } else {
         const index = sampleQuestions.findIndex(q => q.id == id);
         if (index !== -1) {
             sampleQuestions.splice(index, 1);
-            console.log('💡 Question deleted from fallback data');
+            console.log(' Question deleted from fallback data');
         }
     }
     
     res.redirect('/');
 });
 
-// Health check
+//  IMPROVED HEALTH CHECK
 app.get('/health', async (req, res) => {
     let dbStatus = 'disconnected';
     let rowCount = 0;
@@ -223,20 +231,28 @@ app.get('/health', async (req, res) => {
             rowCount = parseInt(result.rows[0].count);
             dbStatus = 'connected';
         } catch (error) {
+            console.error("Health DB error:", error.message);
             dbStatus = 'error';
         }
     }
 
     res.json({
         status: 'OK',
-        database: dbStatus,
+        uptime: process.uptime(),
+        environment: process.env.NODE_ENV || 'development',
+        database_status: dbStatus,
         questions_count: dbStatus === 'connected' ? rowCount : sampleQuestions.length,
-        database_type: 'PostgreSQL',
         timestamp: new Date().toISOString()
     });
 });
 
+// GLOBAL ERROR HANDLER 
+app.use((err, req, res, next) => {
+    console.error("Global Error:", err.message || err);
+    res.status(500).json({ error: "Internal Server Error" });
+});
+
 app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-    console.log('💡 Edit & Delete features added!');
+    console.log(`Server running on port ${PORT}`);
+    console.log('Edit & Delete features added!');
 });
