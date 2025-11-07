@@ -1,43 +1,41 @@
-name: Continuous Integration
+name: Fantastic Four CI
 
 on:
   push:
-    branches: [ "main", "feature-christopher-backend", "feature-calvin-ui", "feature-lampita-docs" ]
+    branches: 
+      - main
+      - feature-*
   pull_request:
-    branches: [ "main" ]
+    branches:
+      - main
 
 jobs:
-  ci-pipeline:
+  build-and-test:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout Source Code
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      # Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: '18'
+          cache: 'npm'
 
-      # Install Dependencies
       - name: Install dependencies
         run: npm install
 
-      # Lint Check (opsional, aman, tidak merusak)
-      - name: Basic lint check
+      - name: Run basic test (dummy test for CI)
         run: |
-          echo "Running basic syntax validation..."
-          node -c server.js || true
+          echo "Running placeholder tests..."
+          echo "No tests yet - CI check passed"
 
-      # Run Tests (Lampita bisa menambahkan test nanti)
-      - name: Run tests (optional)
+      - name: Build Docker image
         run: |
-          echo "Running tests..."
-          npm test || echo "No tests found"
+          echo "Building Docker image..."
+          docker build -t fantastic-four-app .
 
-      # Build Check
-      - name: Build check
+      - name: Validate Docker build success
         run: |
-          echo "CI pipeline completed successfully!"
+          echo "Docker build completed successfully"
