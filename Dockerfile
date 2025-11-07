@@ -1,20 +1,41 @@
-# Gunakan Node.js versi terbaru LTS
+# # Gunakan Node.js versi terbaru LTS
+# FROM node:18-alpine
+
+# # Tentukan working directory
+# WORKDIR /app
+
+# # Salin file package.json dan package-lock.json
+# COPY package*.json ./
+
+# # Install dependencies
+# RUN npm install
+
+# # Salin semua file ke dalam container
+# COPY . .
+
+# # Buka port default (sesuaikan dengan aplikasi)
+# EXPOSE 3000
+
+# # Jalankan aplikasi
+# CMD ["npm", "start"]
+
+# Gunakan Node.js versi LTS yang stabil
 FROM node:18-alpine
 
-# Tentukan working directory
+# Set working directory
 WORKDIR /app
 
-# Salin file package.json dan package-lock.json
+# Salin file konfigurasi package ke container
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install
+# Install dependencies tanpa devDependencies
+RUN npm install --production
 
-# Salin semua file ke dalam container
+# Salin seluruh source code
 COPY . .
 
-# Buka port default (sesuaikan dengan aplikasi)
+# Expose port aplikasi
 EXPOSE 3000
 
-# Jalankan aplikasi
-CMD ["npm", "start"]
+# Jalankan server
+CMD ["node", "server.js"]
