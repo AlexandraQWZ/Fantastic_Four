@@ -1,8 +1,7 @@
 const express = require("express");
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-let db;
+const { Pool } = require('pg');
 
 // Middleware
 app.set("view engine", "ejs");
@@ -12,67 +11,56 @@ app.use(express.json());
 
 console.log('🔧 Environment Variables:');
 console.log('- DATABASE_URL:', process.env.DATABASE_URL ? 'Available' : 'Not available');
-console.log('- MONGO_URL:', process.env.MONGO_URL ? 'Available' : 'Not available');
-console.log('- MONGODB_URI:', process.env.MONGODB_URI ? 'Available' : 'Not available');
 
-// Sample data - akan digunakan jika MongoDB tidak tersedia
+// Setup PostgreSQL connection
+let pool;
+if (process.env.DATABASE_URL) {
+    pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+    });
+
+    // Test connection dan buat table jika belum ada
+    const initializeDatabase = async () => {
+        try {
+            const client = await pool.connect();
+            console.log('✅ Connected to PostgreSQL successfully!');
+            
+            // Create table jika belum ada
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS devkitty_questions (
+                    id SERIAL PRIMARY KEY,
+                    category VARCHAR(100) NOT NULL,
+                    content TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+            console.log('📊 Database table ready');
+            
+            client.release();
+        } catch (error) {
+            console.error('❌ Database initialization error:', error.message);
+        }
+    };
+    
+    initializeDatabase();
+}
+
+// Sample fallback data
 const sampleQuestions = [
     { 
-        _id: '1', 
+        id: 1, 
         category: "JavaScript", 
         content: "Apa perbedaan let, const, dan var?",
-        createdAt: new Date() 
+        created_at: new Date() 
     },
     { 
-        _id: '2', 
+        id: 2, 
         category: "Node.js", 
         content: "Bagaimana cara kerja event loop?",
-        createdAt: new Date() 
-    },
-    { 
-        _id: '3', 
-        category: "Database", 
-        content: "Apa itu MongoDB dan kelebihannya?",
-        createdAt: new Date() 
+        created_at: new Date() 
     }
 ];
-
-// Try to connect to MongoDB jika connection string valid
-const connectToDatabase = async () => {
-    const connectionStr = process.env.DATABASE_URL || process.env.MONGO_URL || process.env.MONGODB_URI;
-    
-    if (!connectionStr) {
-        console.log('💡 No MongoDB connection string found');
-        return null;
-    }
-
-    // Skip connection jika menggunakan mongo:27017 (internal Railway yang tidak work)
-    if (connectionStr.includes('mongo:27017')) {
-        console.log('⚠️  Skipping internal Railway MongoDB connection');
-        return null;
-    }
-
-    try {
-        console.log('🔗 Attempting to connect to MongoDB...');
-        const MongoClient = require('mongodb').MongoClient;
-        const client = await MongoClient.connect(connectionStr, { 
-            useUnifiedTopology: true,
-            useNewUrlParser: true,
-            serverSelectionTimeoutMS: 5000
-        });
-        
-        console.log('✅ Connected to MongoDB successfully!');
-        return client.db();
-    } catch (error) {
-        console.error('❌ MongoDB connection failed:', error.message);
-        return null;
-    }
-};
-
-// Initialize database connection
-connectToDatabase().then(database => {
-    db = database;
-});
 
 // Routes
 app.get('/', async (req, res) => {
@@ -81,12 +69,13 @@ app.get('/', async (req, res) => {
         let left = sampleQuestions.length;
         let dbStatus = 'disconnected';
 
-        if (db) {
+        if (pool) {
             try {
-                items = await db.collection('devkittyquestions').find().toArray();
+                const result = await pool.query('SELECT * FROM devkitty_questions ORDER BY created_at DESC');
+                items = result.rows;
                 left = items.length;
                 dbStatus = 'connected';
-                console.log('📊 Data loaded from MongoDB');
+                console.log('📊 Data loaded from PostgreSQL');
             } catch (dbError) {
                 console.error('Database query error:', dbError);
             }
@@ -111,24 +100,23 @@ app.get('/', async (req, res) => {
 app.post('/addQuestion', async (req, res) => {
     const { category, content } = req.body;
     
-    if (db) {
+    if (pool) {
         try {
-            await db.collection('devkittyquestions').insertOne({
-                category: category,
-                content: content,
-                createdAt: new Date()
-            });
-            console.log('✅ Question saved to MongoDB');
+            await pool.query(
+                'INSERT INTO devkitty_questions (category, content) VALUES ($1, $2)',
+                [category, content]
+            );
+            console.log('✅ Question saved to PostgreSQL');
         } catch (error) {
-            console.error('❌ Failed to save to MongoDB:', error);
+            console.error('❌ Failed to save to PostgreSQL:', error);
         }
     } else {
         // Add to sample data
         sampleQuestions.push({
-            _id: Date.now().toString(),
+            id: Date.now(),
             category: category,
             content: content,
-            createdAt: new Date()
+            created_at: new Date()
         });
         console.log('💡 Question saved to fallback data');
     }
@@ -136,24 +124,54 @@ app.post('/addQuestion', async (req, res) => {
     res.redirect('/');
 });
 
+// Delete question endpoint
+app.post('/deleteQuestion/:id', async (req, res) => {
+    const id = req.params.id;
+    
+    if (pool) {
+        try {
+            await pool.query('DELETE FROM devkitty_questions WHERE id = $1', [id]);
+            console.log('✅ Question deleted from PostgreSQL');
+        } catch (error) {
+            console.error('❌ Failed to delete from PostgreSQL:', error);
+        }
+    } else {
+        // Remove from sample data
+        const index = sampleQuestions.findIndex(q => q.id == id);
+        if (index !== -1) {
+            sampleQuestions.splice(index, 1);
+        }
+        console.log('💡 Question deleted from fallback data');
+    }
+    
+    res.redirect('/');
+});
+
 // Health check endpoint
-app.get('/health', (req, res) => {
+app.get('/health', async (req, res) => {
+    let dbStatus = 'disconnected';
+    let rowCount = 0;
+
+    if (pool) {
+        try {
+            const result = await pool.query('SELECT COUNT(*) FROM devkitty_questions');
+            rowCount = parseInt(result.rows[0].count);
+            dbStatus = 'connected';
+        } catch (error) {
+            dbStatus = 'error';
+        }
+    }
+
     res.json({
         status: 'OK',
-        database: db ? 'connected' : 'disconnected',
-        mode: db ? 'production' : 'demo',
-        questions_count: db ? 'from database' : sampleQuestions.length,
-        environment: {
-            DATABASE_URL: !!process.env.DATABASE_URL,
-            MONGO_URL: !!process.env.MONGO_URL,
-            MONGODB_URI: !!process.env.MONGODB_URI
-        },
+        database: dbStatus,
+        questions_count: dbStatus === 'connected' ? rowCount : sampleQuestions.length,
+        database_type: 'PostgreSQL',
         timestamp: new Date().toISOString()
     });
 });
 
 app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
-    console.log('💡 Application ready with fallback data!');
-    console.log('📝 Add questions via the web interface');
+    console.log('💡 Application ready with PostgreSQL!');
 });
