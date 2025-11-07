@@ -20,13 +20,11 @@ if (process.env.DATABASE_URL) {
         ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
     });
 
-    // Test connection dan buat table jika belum ada
     const initializeDatabase = async () => {
         try {
             const client = await pool.connect();
             console.log('✅ Connected to PostgreSQL successfully!');
             
-            // Create table jika belum ada
             await client.query(`
                 CREATE TABLE IF NOT EXISTS devkitty_questions (
                     id SERIAL PRIMARY KEY,
@@ -47,7 +45,7 @@ if (process.env.DATABASE_URL) {
 }
 
 // Sample fallback data
-const sampleQuestions = [
+let sampleQuestions = [
     { 
         id: 1, 
         category: "JavaScript", 
@@ -97,18 +95,35 @@ app.get('/', async (req, res) => {
     }
 });
 
-app.post('/addQuestion', async (req, res) => {
+// Route untuk handle form submission
+app.post('/', async (req, res) => {
+    console.log('📨 Received POST request to /');
+    console.log('📦 Request body:', req.body);
+    
     const { category, content } = req.body;
+    
+    if (!category || !content) {
+        console.log('❌ Missing category or content');
+        return res.redirect('/');
+    }
     
     if (pool) {
         try {
-            await pool.query(
-                'INSERT INTO devkitty_questions (category, content) VALUES ($1, $2)',
+            const result = await pool.query(
+                'INSERT INTO devkitty_questions (category, content) VALUES ($1, $2) RETURNING *',
                 [category, content]
             );
-            console.log('✅ Question saved to PostgreSQL');
+            console.log('✅ Question saved to PostgreSQL:', result.rows[0]);
         } catch (error) {
             console.error('❌ Failed to save to PostgreSQL:', error);
+            // Fallback to sample data jika database error
+            sampleQuestions.push({
+                id: Date.now(),
+                category: category,
+                content: content,
+                created_at: new Date()
+            });
+            console.log('💡 Question saved to fallback data due to DB error');
         }
     } else {
         // Add to sample data
@@ -124,24 +139,31 @@ app.post('/addQuestion', async (req, res) => {
     res.redirect('/');
 });
 
-// Delete question endpoint
-app.post('/deleteQuestion/:id', async (req, res) => {
-    const id = req.params.id;
+// Juga keep route /addQuestion untuk compatibility
+app.post('/addQuestion', async (req, res) => {
+    console.log('📨 Received POST request to /addQuestion');
+    console.log('📦 Request body:', req.body);
+    
+    const { category, content } = req.body;
     
     if (pool) {
         try {
-            await pool.query('DELETE FROM devkitty_questions WHERE id = $1', [id]);
-            console.log('✅ Question deleted from PostgreSQL');
+            await pool.query(
+                'INSERT INTO devkitty_questions (category, content) VALUES ($1, $2)',
+                [category, content]
+            );
+            console.log('✅ Question saved to PostgreSQL via /addQuestion');
         } catch (error) {
-            console.error('❌ Failed to delete from PostgreSQL:', error);
+            console.error('❌ Failed to save to PostgreSQL:', error);
         }
     } else {
-        // Remove from sample data
-        const index = sampleQuestions.findIndex(q => q.id == id);
-        if (index !== -1) {
-            sampleQuestions.splice(index, 1);
-        }
-        console.log('💡 Question deleted from fallback data');
+        sampleQuestions.push({
+            id: Date.now(),
+            category: category,
+            content: content,
+            created_at: new Date()
+        });
+        console.log('💡 Question saved to fallback data via /addQuestion');
     }
     
     res.redirect('/');
@@ -171,7 +193,14 @@ app.get('/health', async (req, res) => {
     });
 });
 
+// 404 handler
+app.use((req, res) => {
+    console.log('❌ Route not found:', req.method, req.url);
+    res.status(404).send('Page not found');
+});
+
 app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
-    console.log('💡 Application ready with PostgreSQL!');
+    console.log('💡 Application ready!');
+    console.log('📝 POST routes: / and /addQuestion');
 });
