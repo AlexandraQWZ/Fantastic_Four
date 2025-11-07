@@ -3,86 +3,167 @@
   <head>
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-<!-- GOOGLE FONT -->
+    <!-- GOOGLE FONT -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Akshar:wght@100;200;300;400;500;600;700&display=swap"
       rel="stylesheet"/>
-<!-- STYLE SHEET LINK -->
+    <!-- STYLE SHEET LINK -->
     <link rel="stylesheet" href="/style.css" />
-<!-- ICONS -->
-<script src="https://kit.fontawesome.com/ec41095585.js" crossorigin="anonymous"></script>
-<!-- SITE TITLE -->
+    <!-- ICONS -->
+    <script src="https://kit.fontawesome.com/ec41095585.js" crossorigin="anonymous"></script>
+    <!-- SITE TITLE -->
     <title>Edit Your Question</title>
+    <style>
+      .edit-form-container {
+        max-width: 800px;
+        margin: 50px auto;
+        padding: 20px;
+      }
+      
+      .edit-header {
+        text-align: center;
+        margin-bottom: 30px;
+      }
+      
+      .edit-form {
+        background: white;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      }
+      
+      .form-group {
+        margin-bottom: 20px;
+      }
+      
+      .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+        color: #333;
+      }
+      
+      .form-group input,
+      .form-group textarea {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-size: 16px;
+        font-family: 'Akshar', sans-serif;
+      }
+      
+      .form-group textarea {
+        height: 150px;
+        resize: vertical;
+      }
+      
+      .form-buttons {
+        display: flex;
+        gap: 15px;
+        margin-top: 30px;
+      }
+      
+      .btn {
+        padding: 12px 30px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        text-decoration: none;
+        display: inline-block;
+        text-align: center;
+        font-family: 'Akshar', sans-serif;
+      }
+      
+      .btn-confirm {
+        background: #28a745;
+        color: white;
+      }
+      
+      .btn-cancel {
+        background: #6c757d;
+        color: white;
+      }
+      
+      .btn-confirm:hover {
+        background: #218838;
+      }
+      
+      .btn-cancel:hover {
+        background: #5a6268;
+      }
+    </style>
   </head>
 
-
   <body>
-      <!--*********HEADER*********  -->
+    <!--*********HEADER*********-->
     <div class="container-header">
       <header>
         <nav class="nav-edit">
-            <a href="/"><img src="/img/footer-icon.svg" class="footer-logo" alt="yellow logo" /></a>
+          <a href="/"><img src="/img/footer-icon.svg" class="footer-logo" alt="yellow logo" /></a>
           <a href="https://github.com/JesacaLin/dev-kitty.git" target="_blank"><img src="/img/Github@2x.svg" class="logo" alt="Github logo" /></a>
         </nav>
       </header>
     </div>
 
-<!--*********MY QUESTIONS SECTION*********  -->
-<section class="render-edit" id="render-edit-redirect">
-<h4 class="about-why">EDIT MY QUESTIONS</h4>
-<ul class="render-my-questions">
-<% devkittyQ.forEach(details => { %>
-    <% if (details._id == idTask){ %>
-        <li class="add-a-question-edit">
-            <form action="/edit/<%= details._id %>" method="POST" class="add-q-form-edit">
-                <input type="text" class="category-edit" value="<%= details.category %>" name="category">
-                <textarea class="question-field-edit" name="content"><%= details.content %></textarea>
-                <button type="submit" class="confirm">Confirm</button>
-                <a href="/"><button class="cancel">Cancel</button></a>
-            </form>
-        </li>
-    <% } else{ %>
-        <li class="my-q-list">
-            <div class="my-q-list-category">
-              <%= details.category %><span>:</span></div>
-            <div class="my-q-list-content"><%= details.content %></div>
-            <a href="/edit/<%= details._id %>" class="edit"><span class="fa-regular fa-pen-to-square"></span></a>
-            <a href="/remove/<%= details._id %>" class="remove"><span class="fa-regular fa-trash-can"></span></a>
-          </li>
-        <% } %>
-    <% }) %>
-</ul>
-</section>
-
-<!--*********FOOTER*********  -->
-  <footer>
-    <section class="footer-links">
-      <ul class="links">
-        <a href="https://github.com/JesacaLin" target="_blank">// GITHUB</a>
-        <a href="/">// PORTFOLIO</a>
-        <a href="/">// CONTACT</a>
-      </ul>
+    <!--*********EDIT FORM SECTION*********-->
+    <section class="edit-form-container">
+      <div class="edit-header">
+        <h4 class="about-why">EDIT QUESTION</h4>
+      </div>
+      
+      <form action="/update/<%= question.id %>" method="POST" class="edit-form">
+        <div class="form-group">
+          <label for="category">Category:</label>
+          <input 
+            type="text" 
+            id="category" 
+            name="category" 
+            value="<%= question.category %>" 
+            placeholder="e.g., JavaScript, Node.js, Database"
+            required
+          >
+        </div>
+        
+        <div class="form-group">
+          <label for="content">Question Content:</label>
+          <textarea 
+            id="content" 
+            name="content" 
+            placeholder="Enter your question here..."
+            required
+          ><%= question.content %></textarea>
+        </div>
+        
+        <div class="form-buttons">
+          <button type="submit" class="btn btn-confirm">
+            <i class="fas fa-check"></i> Update Question
+          </button>
+          <a href="/" class="btn btn-cancel">
+            <i class="fas fa-times"></i> Cancel
+          </a>
+        </div>
+      </form>
     </section>
 
+    <!--*********FOOTER*********-->
+    <footer>
+      <section class="footer-links">
+        <ul class="links">
+          <a href="https://github.com/JesacaLin" target="_blank">// GITHUB</a>
+          <a href="/">// PORTFOLIO</a>
+          <a href="/">// CONTACT</a>
+        </ul>
+      </section>
 
+      <div class="footer-title">
+        <a href="/"><img src="/img/footer-icon.svg" class="footer-logo" alt="yellow logo" /></a>
+      </div>
+    </footer>
 
-    <div class="footer-title">
-      <!-- *********will have to give credit to the icons********** -->
-      <a href="/"><img src="/img/footer-icon.svg" class="footer-logo" alt="yellow logo" /></a>
-      <!-- <h2>DEV KITTY</h2> -->
-    </div>
-  </footer>
-
-  <!-- the exporting file has to always come first -->
-  <script src="data.js"></script>
-  <script src="main.js"></script>
-
-
-</body>
-
+  </body>
 </html>
-
-
