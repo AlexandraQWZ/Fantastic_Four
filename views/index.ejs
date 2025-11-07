@@ -139,12 +139,22 @@
       <li class="my-q-list">
         <div class="my-q-list-category"><%= details.category %><span>:</span></div>
         <div class="my-q-list-content"><%= details.content %></div>
-        <a href="/edit/<%= details._id %>" class="edit"><span class="fa-regular fa-pen-to-square"></span></a>
-        <a href="/remove/<%= details._id %>" class="remove"><span class="fa-regular fa-trash-can"></span></a>
+        
+        <!-- 🆕 FIXED: Ganti _id dengan id -->
+        <a href="/edit/<%= details.id %>" class="edit">
+          <span class="fa-regular fa-pen-to-square"></span>
+        </a>
+        
+        <!-- 🆕 FIXED: Ganti remove dengan delete route -->
+        <form action="/delete/<%= details.id %>" method="POST" style="display: inline;">
+          <button type="submit" class="remove" onclick="return confirm('Delete this question?')">
+            <span class="fa-regular fa-trash-can"></span>
+          </button>
+        </form>
       </li>
     <% }) %>
   </ul>
-  </section>
+</section>
 
 
 
