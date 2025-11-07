@@ -1,11 +1,8 @@
 const express = require("express");
 const app = express();
 const PORT = process.env.PORT || 3000;
-const MongoClient = require('mongodb').MongoClient;
 
 let db;
-// Railway akan provide DATABASE_URL atau MONGODB_URI
-const dbConnectionStr = process.env.DATABASE_URL || process.env.MONGO_URL || process.env.MONGODB_URI;
 
 // Middleware
 app.set("view engine", "ejs");
@@ -13,12 +10,12 @@ app.use(express.static('public'));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-console.log('🔧 Environment Check:');
+console.log('🔧 Environment Variables:');
 console.log('- DATABASE_URL:', process.env.DATABASE_URL ? 'Available' : 'Not available');
 console.log('- MONGO_URL:', process.env.MONGO_URL ? 'Available' : 'Not available');
 console.log('- MONGODB_URI:', process.env.MONGODB_URI ? 'Available' : 'Not available');
 
-// Sample data untuk fallback
+// Sample data - akan digunakan jika MongoDB tidak tersedia
 const sampleQuestions = [
     { 
         _id: '1', 
@@ -31,31 +28,51 @@ const sampleQuestions = [
         category: "Node.js", 
         content: "Bagaimana cara kerja event loop?",
         createdAt: new Date() 
+    },
+    { 
+        _id: '3', 
+        category: "Database", 
+        content: "Apa itu MongoDB dan kelebihannya?",
+        createdAt: new Date() 
     }
 ];
 
-// Connect to MongoDB hanya jika connection string ada
-if (dbConnectionStr) {
-    console.log('🔗 Connecting to MongoDB...');
-    console.log('📡 Connection string:', dbConnectionStr);
+// Try to connect to MongoDB jika connection string valid
+const connectToDatabase = async () => {
+    const connectionStr = process.env.DATABASE_URL || process.env.MONGO_URL || process.env.MONGODB_URI;
     
-    MongoClient.connect(dbConnectionStr, { 
-        useUnifiedTopology: true,
-        useNewUrlParser: true,
-        serverSelectionTimeoutMS: 10000
-    })
-    .then(client => {
+    if (!connectionStr) {
+        console.log('💡 No MongoDB connection string found');
+        return null;
+    }
+
+    // Skip connection jika menggunakan mongo:27017 (internal Railway yang tidak work)
+    if (connectionStr.includes('mongo:27017')) {
+        console.log('⚠️  Skipping internal Railway MongoDB connection');
+        return null;
+    }
+
+    try {
+        console.log('🔗 Attempting to connect to MongoDB...');
+        const MongoClient = require('mongodb').MongoClient;
+        const client = await MongoClient.connect(connectionStr, { 
+            useUnifiedTopology: true,
+            useNewUrlParser: true,
+            serverSelectionTimeoutMS: 5000
+        });
+        
         console.log('✅ Connected to MongoDB successfully!');
-        db = client.db();
-    })
-    .catch(error => {
+        return client.db();
+    } catch (error) {
         console.error('❌ MongoDB connection failed:', error.message);
-        console.log('💡 Using fallback data mode');
-    });
-} else {
-    console.log('💡 No MongoDB connection string found');
-    console.log('💡 Using fallback data mode');
-}
+        return null;
+    }
+};
+
+// Initialize database connection
+connectToDatabase().then(database => {
+    db = database;
+});
 
 // Routes
 app.get('/', async (req, res) => {
@@ -119,15 +136,17 @@ app.post('/addQuestion', async (req, res) => {
     res.redirect('/');
 });
 
-// Health check dengan info detail
+// Health check endpoint
 app.get('/health', (req, res) => {
     res.json({
         status: 'OK',
         database: db ? 'connected' : 'disconnected',
-        environment_variables: {
-            DATABASE_URL: process.env.DATABASE_URL ? 'available' : 'not available',
-            MONGO_URL: process.env.MONGO_URL ? 'available' : 'not available', 
-            MONGODB_URI: process.env.MONGODB_URI ? 'available' : 'not available'
+        mode: db ? 'production' : 'demo',
+        questions_count: db ? 'from database' : sampleQuestions.length,
+        environment: {
+            DATABASE_URL: !!process.env.DATABASE_URL,
+            MONGO_URL: !!process.env.MONGO_URL,
+            MONGODB_URI: !!process.env.MONGODB_URI
         },
         timestamp: new Date().toISOString()
     });
@@ -135,5 +154,6 @@ app.get('/health', (req, res) => {
 
 app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
-    console.log('💡 Application ready!');
+    console.log('💡 Application ready with fallback data!');
+    console.log('📝 Add questions via the web interface');
 });
