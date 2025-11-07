@@ -1,126 +1,129 @@
 "use strict";
 
-//TODO
-//figure out how prevent the same tip from displaying back to back
+/*  
+  FANTASTIC FOUR – Neon Blue Edition
+  Modernized modal handling, cleaner event listeners,
+  safer "More!" button binding, and updated UI text.
+*/
 
-
-//***************IMPORTING DATA FROM ANOTHER FILE USING MODULES.
-// Interestingly we can import array data from another document by using modules. It doesn't seem to work within the main.js file but it will work directly in the html file. Had to use import vs required as require only works on server side...https://tinyurl.com/2p8pxzya
-// import { behavorTips } from "./data.js";
-// import { htmlTips } from "./data.js";
-
-//*************** modal behavior
+/******************************
+ *  DOM ELEMENTS
+ ******************************/
 const modal = document.querySelector(".modal");
 const overlay = document.querySelector(".overlay");
 const btnCloseModal = document.querySelector(".close-modal");
-const btnsOpenModal = document.querySelectorAll(".show-modal");
-const moreModal = document.querySelector(".more-modal");
-// const eraseText = document.querySelector('.add-q-form');
+const btnCategoryButtons = document.querySelectorAll(".show-modal button");
+const moreBtn = document.querySelector(".more-modal");
+const tipParagraph = document.querySelector("#tipParagraph");
+const surpriseImage = document.querySelector(".surprise-image");
 
-
-//***************HELPER FUNCTIONS***************
-function openModal() {
+/******************************
+ *  MODAL CONTROL FUNCTIONS
+ ******************************/
+const openModal = () => {
   modal.classList.remove("hidden");
   overlay.classList.remove("hidden");
-}
 
-function closeModal() {
+  // Neon glow effect on open
+  modal.style.boxShadow = "0 0 35px rgba(0, 229, 255, 0.5)";
+};
+
+const closeModal = () => {
   modal.classList.add("hidden");
   overlay.classList.add("hidden");
-}
 
-function moreModalFunc(tipsFunc) {
-  moreModal.addEventListener("click", tipsFunc);
-}
+  // Reset effect
+  modal.style.boxShadow = "none";
+};
 
+/******************************
+ *  RANDOM QUESTION HANDLING
+ ******************************/
 function randomTipsGen(tips) {
-  document.querySelector("#tipParagraph").textContent =
+  tipParagraph.textContent =
     tips[Math.floor(Math.random() * tips.length)];
 }
 
-//I wonder if I have to make another randomTipsGen to draw from the database instead... Then don't I have to import the database? Maybe this needs to be done in the ejs file with a for loop...looping through the questions in the database.
+/******************************
+ *  SAFE "MORE" BUTTON HANDLER
+ ******************************/
+let currentMoreHandler = null;
 
-//***************MODAL BEHAVIOR***************
-for (let i = 0; i < btnsOpenModal.length; i++) {
-  btnsOpenModal[i].addEventListener("click", openModal);
+function setMoreButton(handler) {
+  // Remove old listener if exists
+  if (currentMoreHandler) {
+    moreBtn.removeEventListener("click", currentMoreHandler);
+  }
+
+  // Set new handler
+  currentMoreHandler = handler;
+  moreBtn.addEventListener("click", currentMoreHandler);
 }
 
-btnCloseModal.addEventListener("click", closeModal);
-overlay.addEventListener('click', closeModal)
+/******************************
+ *  RANDOM DOG IMAGE FETCH
+ ******************************/
+function fetchRandomAnimalPicture() {
+  fetch("https://dog.ceo/api/breeds/image/random")
+    .then((res) => res.json())
+    .then((data) => {
+      surpriseImage.src = data.message;
+    })
+    .catch((err) => {
+      console.log(`Random image error: ${err}`);
+    });
+}
 
-document.addEventListener("keydown", function (e) {
+/******************************
+ *  MODAL TRIGGERS
+ ******************************/
+// Open modal when ANY category icon is clicked
+document.querySelector(".show-modal").addEventListener("click", () => {
+  openModal();
+  fetchRandomAnimalPicture();
+});
+
+/******************************
+ *  CATEGORY CLICK HANDLERS
+ ******************************/
+document.querySelector(".my-question").addEventListener("click", () => {
+  randomTipsGen(myTips);
+  setMoreButton(() => randomTipsGen(myTips));
+});
+
+document.querySelector(".behavorial").addEventListener("click", () => {
+  randomTipsGen(behavorTips);
+  setMoreButton(() => randomTipsGen(behavorTips));
+});
+
+document.querySelector(".html").addEventListener("click", () => {
+  randomTipsGen(htmlTips);
+  setMoreButton(() => randomTipsGen(htmlTips));
+});
+
+document.querySelector(".css").addEventListener("click", () => {
+  randomTipsGen(cssTips);
+  setMoreButton(() => randomTipsGen(cssTips));
+});
+
+document.querySelector(".js").addEventListener("click", () => {
+  randomTipsGen(jsTips);
+  setMoreButton(() => randomTipsGen(jsTips));
+});
+
+document.querySelector(".node").addEventListener("click", () => {
+  randomTipsGen(nodeTips);
+  setMoreButton(() => randomTipsGen(nodeTips));
+});
+
+/******************************
+ *  CLOSE MODAL EVENTS
+ ******************************/
+btnCloseModal.addEventListener("click", closeModal);
+overlay.addEventListener("click", closeModal);
+
+document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && !modal.classList.contains("hidden")) {
     closeModal();
   }
 });
-
-//LOOK --->ADDED API. Someday...PetFinder api.
-//For now it will be one cute pic of a dog per question...
-
-document.querySelector(".show-modal").addEventListener("click", getPics);
-
-function getPics() {
-  fetch("https://dog.ceo/api/breeds/image/random")
-    .then((res) => res.json())
-    .then((data) => {
-      document.querySelector(".surprise-image").src = data.message;
-    })
-    .catch((err) => {
-      console.log("error ${err}");
-    });
-
-  moreModalFunc(getPics);
-}
-
-//LOOK ---> calling and rendering the tips to the modal
-
-//SURPRISE
-document.querySelector(".my-question").addEventListener("click", getMyTips);
-
-function getMyTips() {
-  randomTipsGen(myTips);
-  moreModalFunc(getMyTips);
-}
-
-//BEHAVIORAL
-document.querySelector(".behavorial").addEventListener("click", getBehavorTips);
-
-function getBehavorTips() {
-  randomTipsGen(behavorTips);
-  moreModalFunc(getBehavorTips);
-}
-
-//HTML
-document.querySelector(".html").addEventListener("click", getHtmlTips);
-
-function getHtmlTips() {
-  randomTipsGen(htmlTips);
-  moreModalFunc(getHtmlTips);
-}
-
-//css
-document.querySelector(".css").addEventListener("click", getCssTips);
-
-function getCssTips() {
-  randomTipsGen(cssTips);
-  moreModalFunc(getCssTips);
-}
-
-//JS
-document.querySelector(".js").addEventListener("click", getJsTips);
-
-function getJsTips() {
-  randomTipsGen(jsTips);
-  moreModalFunc(getJsTips);
-}
-
-//Node
-document.querySelector(".node").addEventListener("click", getNodeTips);
-
-function getNodeTips() {
-  randomTipsGen(nodeTips);
-  moreModalFunc(getNodeTips);
-}
-
-
-
