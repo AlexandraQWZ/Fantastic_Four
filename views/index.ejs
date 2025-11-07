@@ -131,31 +131,36 @@
 
 
 <!--*********MY QUESTIONS SECTION*********  -->
-
 <section class="render">
   <h4 class="about-why">MY QUESTIONS</h4>
   <ul class="render-my-questions">
     <% items.forEach(details => { %>
       <li class="my-q-list">
-        <div class="my-q-list-category"><%= details.category %><span>:</span></div>
-        <div class="my-q-list-content"><%= details.content %></div>
+        <div class="question-content-wrapper">
+          <div class="my-q-list-category"><%= details.category %><span>:</span></div>
+          <div class="my-q-list-content"><%= details.content %></div>
+          <small class="question-date">
+            Added: <%= new Date(details.created_at).toLocaleDateString('id-ID') %>
+          </small>
+        </div>
         
-        <!-- 🆕 FIXED: Ganti _id dengan id -->
-        <a href="/edit/<%= details.id %>" class="edit">
-          <span class="fa-regular fa-pen-to-square"></span>
-        </a>
-        
-        <!-- 🆕 FIXED: Ganti remove dengan delete route -->
-        <form action="/delete/<%= details.id %>" method="POST" style="display: inline;">
-          <button type="submit" class="remove" onclick="return confirm('Delete this question?')">
-            <span class="fa-regular fa-trash-can"></span>
-          </button>
-        </form>
+        <div class="question-actions">
+          <!-- Edit Button -->
+          <a href="/edit/<%= details.id %>" class="edit-btn">
+            <i class="fas fa-edit"></i> Edit
+          </a>
+          
+          <!-- Delete Button -->
+          <form action="/delete/<%= details.id %>" method="POST">
+            <button type="submit" class="delete-btn" onclick="return confirm('Are you sure you want to delete this question?')">
+              <i class="fas fa-trash"></i> Delete
+            </button>
+          </form>
+        </div>
       </li>
     <% }) %>
   </ul>
 </section>
-
 
 
 
