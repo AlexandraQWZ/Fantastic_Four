@@ -47,20 +47,20 @@ Workflow CI/CD otomatis dijalankan menggunakan GitHub Actions setiap kali:
 
 🔄 **Alur CI Pipeline**
 
-Install dependencies → npm install
+1. Install dependencies → npm install
 
-Build aplikasi
+2. Build aplikasi
 
-Jalankan testing (menggunakan Jest / Supertest)
+3. Jalankan testing (menggunakan Jest / Supertest)
 
-Deploy otomatis ke Railway (jika semua tahap berhasil ✅)
+4. Deploy otomatis ke Railway (jika semua tahap berhasil ✅)
 
-📁 File konfigurasi pipeline:
+5. 📁 File konfigurasi pipeline:
 
-.github/workflows/ci.yml
+- .github/workflows/ci.yml
 
 
-Tujuan CI/CD:
+**Tujuan CI/CD:**
 
 Menjamin aplikasi selalu dalam kondisi build-ready
 
