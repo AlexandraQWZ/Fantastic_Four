@@ -19,12 +19,15 @@ Fokus utama proyek ini adalah penerapan DevOps Workflow, CI/CD Automation, dan *
 ```bash
     git clone https://github.com/AlexandraQWZ/Fantastic_Four.git
     cd Fantastic_Four
+```
 2. Install Dependencies
+```bash
     npm install
-
+```
 3. Jalankan Aplikasi Secara Lokal
+```bash
     npm start
-
+```
 
 Aplikasi akan berjalan di:
 👉 http://localhost:3000
