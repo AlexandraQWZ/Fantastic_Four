@@ -13,7 +13,7 @@ Fokus utama proyek ini adalah penerapan DevOps Workflow, CI/CD Automation, dan *
 
 ---
 
-🚀 Cara Menjalankan Aplikasi
+🚀 **Cara Menjalankan Aplikasi**
 
 1. Clone Repository
 ```bash
@@ -27,7 +27,7 @@ Fokus utama proyek ini adalah penerapan DevOps Workflow, CI/CD Automation, dan *
 3. Jalankan Aplikasi Secara Lokal
 ```bash
     npm start
-```\n
+```
    Aplikasi akan berjalan di:
    👉 http://localhost:3000
 
