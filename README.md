@@ -1,4 +1,4 @@
-👩‍💻 Kontributor
+👩‍💻 **Kontributor**
 - Alexandra (Ketua Kelompok)
 - Christopher Luhur
 - Calvin Christofel Sibuea
@@ -28,23 +28,23 @@ Fokus utama proyek ini adalah penerapan DevOps Workflow, CI/CD Automation, dan *
 ```bash
     npm start
 ```
-
-Aplikasi akan berjalan di:
-👉 http://localhost:3000
-
+   Aplikasi akan berjalan di:
+   👉 http://localhost:3000
 4. Build & Jalankan Menggunakan Docker
+```bash
 docker build -t fantastic-four-app .
 docker run -p 3000:3000 fantastic-four-app
+```
 
-⚙️ Penjelasan Singkat Workflow CI/CD
+⚙️ **Penjelasan Singkat Workflow CI/CD**
 
 Workflow CI/CD otomatis dijalankan menggunakan GitHub Actions setiap kali:
 
-Ada commit baru di branch main atau feature/*
+1. Ada commit baru di branch main atau feature/*
 
-Ada Pull Request yang dibuat / diperbarui
+2. Ada Pull Request yang dibuat / diperbarui
 
-🔄 Alur CI Pipeline
+🔄 **Alur CI Pipeline**
 
 Install dependencies → npm install
 
