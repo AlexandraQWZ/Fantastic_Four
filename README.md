@@ -27,10 +27,10 @@ Fokus utama proyek ini adalah penerapan DevOps Workflow, CI/CD Automation, dan *
 3. Jalankan Aplikasi Secara Lokal
 ```bash
     npm start
-```
+```\n
    Aplikasi akan berjalan di:
    👉 http://localhost:3000
-   
+
 4. Build & Jalankan Menggunakan Docker
 ```bash
 docker build -t fantastic-four-app .
