@@ -1,5 +1,11 @@
 "use strict";
 
+/*  
+  FANTASTIC FOUR – Neon Blue Edition
+  Modernized modal handling, cleaner event listeners,
+  safer "More!" button binding, and updated UI text.
+*/
+
 
 /******************************
  *  DOM ELEMENTS
