@@ -6,6 +6,7 @@
   safer "More!" button binding, and updated UI text.
 */
 
+
 /******************************
  *  DOM ELEMENTS
  ******************************/
