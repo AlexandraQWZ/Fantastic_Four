@@ -1,13 +1,13 @@
-name: Build and Push Docker Image
+name: Build and Deploy to Kubernetes
 
 on:
   push:
     branches: [ "main" ]
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
-
+    
     steps:
       - name: Checkout source code
         uses: actions/checkout@v3
@@ -25,7 +25,31 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/fantastic_four:latest
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/fantastic_four:latest
+            ${{ secrets.DOCKER_USERNAME }}/fantastic_four:${{ github.sha }}
 
-      - name: Verify image pushed
-        run: docker pull ${{ secrets.DOCKER_USERNAME }}/fantastic_four:latest
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+        
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > ~/.kube/config
+          kubectl cluster-info
+          
+      - name: Deploy to Kubernetes
+        run: |
+          # Update image in deployment
+          kubectl set image deployment/fantastic-four-app \
+            fantastic-four=${{ secrets.DOCKER_USERNAME }}/fantastic_four:${{ github.sha }} \
+            -n default
+          
+          # Rollout restart untuk update config
+          kubectl rollout restart deployment/fantastic-four-app -n default
+          
+          # Verifikasi
+          kubectl rollout status deployment/fantastic-four-app -n default
+          kubectl get pods -n default
