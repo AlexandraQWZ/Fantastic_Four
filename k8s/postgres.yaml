@@ -1,9 +1,8 @@
 apiVersion: apps/v1
-kind: StatefulSet
+kind: Deployment
 metadata:
-  name: postgres
+  name: postgres-deployment
 spec:
-  serviceName: postgres
   replicas: 1
   selector:
     matchLabels:
@@ -14,42 +13,22 @@ spec:
         app: postgres
     spec:
       containers:
-      - name: postgres
-        image: postgres:15-alpine
-        env:
-        - name: POSTGRES_DB
-          value: fantasticfour
-        - name: POSTGRES_USER
-          valueFrom:
-            secretKeyRef:
-              name: app-secret
-              key: postgres-user
-        - name: POSTGRES_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: app-secret
-              key: postgres-password
-        ports:
-        - containerPort: 5432
-        volumeMounts:
-        - name: postgres-data
-          mountPath: /var/lib/postgresql/data
-  volumeClaimTemplates:
-  - metadata:
-      name: postgres-data
-    spec:
-      accessModes: [ "ReadWriteOnce" ]
-      resources:
-        requests:
-          storage: 5Gi
+        - name: postgres
+          image: postgres:15-alpine
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - secretRef:
+                name: app-secret
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: postgres-service
+  name: db # Ini akan jadi HOSTNAME untuk Node.js
 spec:
   selector:
     app: postgres
   ports:
-  - port: 5432
-    targetPort: 5432
+    - protocol: TCP
+      port: 5432
+      targetPort: 5432

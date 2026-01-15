@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  db: # ini adalah service name, tulisannya db
+    image: postgres:15-alpine  # Docker akan ambil otomatis dari Docker Hub
+    container_name: postgres_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRE_USERNAME}
+      POSTGRES_PASSWORD: ${POSTGRE_PASSWORD}
+      POSTGRES_DB: ${POSTGRE_DB}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRE_USERNAME} -d ${POSTGRE_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      # pgdata (nama volume) dihubungkan ke folder internal Postgres
+      - pgdata:/var/lib/postgresql/data 
+    networks:
+      - app-networks
+
+  nodejs: # web-app dari proyek UTS, servis name nya jadi nodejs
+    build: .
+    container_name: nodejs
+    env_file: .env
+    environment:
+      - POSTGRE_HOSTNAME=${POSTGRE_HOSTNAME} # Menunjuk ke nama service 'db' di atas
+      - POSTGRE_USERNAME=${POSTGRE_USERNAME}
+      - POSTGRE_PASSWORD=${POSTGRE_PASSWORD}
+      - POSTGRE_PORT=${POSTGRE_PORT}
+      - POSTGRE_DB=${POSTGRE_DB}
+      - DATABASE_URL=postgres://${POSTGRE_USERNAME}:${POSTGRE_PASSWORD}@${POSTGRE_HOSTNAME}:${POSTGRE_PORT}/${POSTGRE_DB}
+      - NODE_ENV=development
+    ports:
+      - "4000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+    networks:
+      - app-networks
+
+networks:
+  app-networks:
+    driver: bridge
+
+volumes:
+  pgdata: # Menyimpan data database agar tidak hilang saat container dihapus
