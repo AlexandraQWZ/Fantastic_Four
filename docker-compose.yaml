@@ -1,49 +1,49 @@
 version: '3.8'
 
 services:
-  db: # ini adalah service name, tulisannya db
-    image: postgres:15-alpine  # Docker akan ambil otomatis dari Docker Hub
+  db:
+    image: postgres:15-alpine
     container_name: postgres_db
     restart: always
     environment:
-      POSTGRES_USER: ${POSTGRE_USERNAME}
-      POSTGRES_PASSWORD: ${POSTGRE_PASSWORD}
-      POSTGRES_DB: ${POSTGRE_DB}
+      POSTGRES_USER: ${POSTGRE_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRE_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRE_DB:-fantastic_four}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRE_USERNAME} -d ${POSTGRE_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRE_USERNAME:-postgres} -d ${POSTGRE_DB:-fantastic_four}"]
       interval: 5s
       timeout: 5s
       retries: 5
     volumes:
-      # pgdata (nama volume) dihubungkan ke folder internal Postgres
-      - pgdata:/var/lib/postgresql/data 
+      - pgdata:/var/lib/postgresql/data
     networks:
       - app-networks
 
-  nodejs: # web-app dari proyek UTS, servis name nya jadi nodejs
+  nodejs:
     build: .
-    container_name: nodejs
+    container_name: fantastic-four-app
     env_file: .env
     environment:
-      - POSTGRE_HOSTNAME=${POSTGRE_HOSTNAME} # Menunjuk ke nama service 'db' di atas
-      - POSTGRE_USERNAME=${POSTGRE_USERNAME}
-      - POSTGRE_PASSWORD=${POSTGRE_PASSWORD}
-      - POSTGRE_PORT=${POSTGRE_PORT}
-      - POSTGRE_DB=${POSTGRE_DB}
-      - DATABASE_URL=postgres://${POSTGRE_USERNAME}:${POSTGRE_PASSWORD}@${POSTGRE_HOSTNAME}:${POSTGRE_PORT}/${POSTGRE_DB}
       - NODE_ENV=development
+      - PORT=3000
+      - DATABASE_URL=postgres://${POSTGRE_USERNAME:-postgres}:${POSTGRE_PASSWORD:-password}@db:5432/${POSTGRE_DB:-fantastic_four}
+      - METRICS_ENABLED=true  # Tetap enable metrics untuk konsistensi
     ports:
       - "4000:3000"
     depends_on:
       db:
         condition: service_healthy
-
     networks:
       - app-networks
+    # Labels untuk consistency (optional)
+    labels:
+      - "prometheus.scrape=true"
+      - "prometheus.port=3000"
+      - "prometheus.path=/metrics"
 
 networks:
   app-networks:
     driver: bridge
 
 volumes:
-  pgdata: # Menyimpan data database agar tidak hilang saat container dihapus
+  pgdata:
