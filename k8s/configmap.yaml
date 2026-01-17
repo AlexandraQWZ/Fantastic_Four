@@ -1,0 +1,273 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: fantastic-four
+  labels:
+    app: fantastic-four
+    monitoring: enabled
+data:
+  # ==================== APPLICATION CONFIGURATION ====================
+  NODE_ENV: "production"
+  PORT: "3000"
+  LOG_LEVEL: "info"
+  API_PREFIX: "/api"
+  
+  # ==================== DATABASE CONFIGURATION ====================
+  POSTGRES_HOST: "postgres-service"
+  POSTGRES_PORT: "5432"
+  
+  # ==================== MONITORING CONFIGURATION ====================
+  # Metrics Configuration
+  METRICS_ENABLED: "true"
+  METRICS_PORT: "9090"
+  METRICS_PATH: "/metrics"
+  METRICS_COLLECTION_INTERVAL_MS: "15000"
+  
+  # Health Check Configuration
+  HEALTH_CHECK_ENABLED: "true"
+  HEALTH_CHECK_PATH: "/health"
+  HEALTH_CHECK_INTERVAL_MS: "30000"
+  
+  # Logging Configuration
+  LOG_FORMAT: "json"
+  LOG_OUTPUT: "stdout"
+  LOG_FILE_PATH: "/app/logs/app.log"
+  
+  # Performance Monitoring
+  REQUEST_TIMEOUT_MS: "10000"
+  RATE_LIMIT_REQUESTS: "100"
+  RATE_LIMIT_WINDOW_MS: "60000"
+  
+  # ==================== PROMETHEUS CONFIGURATION ====================
+  prometheus-app-config.yml: |
+    # Prometheus scrape configuration for Fantastic Four app
+    - job_name: 'fantastic-four-app'
+      scrape_interval: 15s
+      scrape_timeout: 10s
+      metrics_path: '/metrics'
+      static_configs:
+        - targets:
+          - 'fantastic-four-service:3000'
+          labels:
+            app: 'fantastic-four'
+            environment: 'production'
+            namespace: 'fantastic-four'
+      
+      # Relabeling rules
+      relabel_configs:
+        - source_labels: [__address__]
+          target_label: instance
+        - source_labels: [__meta_kubernetes_pod_name]
+          target_label: pod
+        - source_labels: [__meta_kubernetes_namespace]
+          target_label: namespace
+  
+  # ==================== GRAFANA DASHBOARD CONFIGURATION ====================
+  grafana-dashboard-config.json: |
+    {
+      "dashboard": {
+        "title": "Fantastic Four Application Dashboard",
+        "refresh": "30s",
+        "panels": [
+          {
+            "title": "HTTP Requests Rate",
+            "targets": [{
+              "expr": "rate(http_requests_total{app=\"fantastic-four\"}[5m])",
+              "legendFormat": "{{method}} {{route}}"
+            }]
+          },
+          {
+            "title": "Error Rate (%)",
+            "targets": [{
+              "expr": "(rate(http_requests_total{status_code=~\"5..\", app=\"fantastic-four\"}[5m]) / rate(http_requests_total{app=\"fantastic-four\"}[5m])) * 100"
+            }]
+          },
+          {
+            "title": "Response Time (95th percentile)",
+            "targets": [{
+              "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{app=\"fantastic-four\"}[5m]))"
+            }]
+          }
+        ]
+      }
+    }
+  
+  # ==================== ALERT RULES CONFIGURATION ====================
+  alert-rules.yml: |
+    groups:
+      - name: fantastic-four-app-alerts
+        rules:
+          - alert: FantasticFourHighErrorRate
+            expr: rate(http_requests_total{status_code=~"5..", app="fantastic-four"}[5m]) / rate(http_requests_total{app="fantastic-four"}[5m]) > 0.05
+            for: 2m
+            labels:
+              severity: critical
+              app: fantastic-four
+              service: fantastic-four-app
+            annotations:
+              summary: "High error rate on Fantastic Four application"
+              description: "Error rate is {{ $value | humanizePercentage }} for Fantastic Four app"
+              runbook_url: "https://github.com/your-org/fantastic-four/wiki/Runbook#high-error-rate"
+          
+          - alert: FantasticFourHighResponseTime
+            expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{app="fantastic-four"}[5m])) > 2
+            for: 5m
+            labels:
+              severity: warning
+              app: fantastic-four
+            annotations:
+              summary: "High response time on Fantastic Four application"
+              description: "95th percentile response time is {{ $value }} seconds"
+          
+          - alert: FantasticFourServiceDown
+            expr: up{app="fantastic-four"} == 0
+            for: 1m
+            labels:
+              severity: critical
+              app: fantastic-four
+            annotations:
+              summary: "Fantastic Four application is down"
+              description: "Service {{ $labels.instance }} is not responding"
+          
+          - alert: FantasticFourHighMemoryUsage
+            expr: (container_memory_working_set_bytes{container="fantastic-four"} / container_spec_memory_limit_bytes{container="fantastic-four"}) > 0.8
+            for: 5m
+            labels:
+              severity: warning
+              app: fantastic-four
+            annotations:
+              summary: "High memory usage on Fantastic Four"
+              description: "Memory usage is at {{ $value | humanizePercentage }}"
+          
+          - alert: FantasticFourHighCPUUsage
+            expr: (rate(container_cpu_usage_seconds_total{container="fantastic-four"}[5m]) * 100) > 80
+            for: 5m
+            labels:
+              severity: warning
+              app: fantastic-four
+            annotations:
+              summary: "High CPU usage on Fantastic Four"
+              description: "CPU usage is at {{ $value }}%"
+  
+  # ==================== APPLICATION METRICS CONFIGURATION ====================
+  metrics-config.json: |
+    {
+      "defaultMetrics": {
+        "collectDefaultMetrics": true,
+        "timeout": 5000,
+        "prefix": "fantastic_four_"
+      },
+      "customMetrics": {
+        "http": {
+          "requests": {
+            "name": "http_requests_total",
+            "help": "Total number of HTTP requests",
+            "labelNames": ["method", "route", "status_code"]
+          },
+          "duration": {
+            "name": "http_request_duration_seconds",
+            "help": "Duration of HTTP requests in seconds",
+            "labelNames": ["method", "route", "status_code"],
+            "buckets": [0.1, 0.3, 0.5, 1, 2, 5]
+          }
+        },
+        "database": {
+          "queryDuration": {
+            "name": "db_query_duration_seconds",
+            "help": "Duration of database queries in seconds",
+            "labelNames": ["operation", "table"]
+          }
+        },
+        "application": {
+          "activeConnections": {
+            "name": "active_connections",
+            "help": "Number of active connections"
+          },
+          "uptime": {
+            "name": "application_uptime_seconds",
+            "help": "Application uptime in seconds"
+          }
+        }
+      }
+    }
+  
+  # ==================== LOGGING CONFIGURATION ====================
+  logging-config.json: |
+    {
+      "level": "info",
+      "transports": [
+        {
+          "type": "console",
+          "format": "json",
+          "timestamp": true
+        }
+      ],
+      "loggers": {
+        "http": "info",
+        "database": "info",
+        "metrics": "debug"
+      },
+      "fields": {
+        "app": "fantastic-four",
+        "environment": "production",
+        "version": "1.0.0"
+      }
+    }
+  
+  # ==================== HEALTH CHECK CONFIGURATION ====================
+  health-check-config.json: |
+    {
+      "endpoints": [
+        {
+          "name": "main",
+          "path": "/health",
+          "method": "GET",
+          "interval": "30s",
+          "timeout": "5s",
+          "expectedStatus": 200,
+          "checks": [
+            {
+              "name": "database",
+              "type": "database",
+              "query": "SELECT 1",
+              "timeout": "2s"
+            },
+            {
+              "name": "memory",
+              "type": "memory",
+              "threshold": 0.9
+            }
+          ]
+        },
+        {
+          "name": "metrics",
+          "path": "/metrics",
+          "method": "GET",
+          "interval": "60s",
+          "timeout": "10s",
+          "expectedStatus": 200
+        },
+        {
+          "name": "readiness",
+          "path": "/ready",
+          "method": "GET",
+          "interval": "5s",
+          "timeout": "3s",
+          "expectedStatus": 200
+        }
+      ],
+      "notifications": {
+        "slack": {
+          "webhook": "https://hooks.slack.com/services/YOUR/WEBHOOK/URL",
+          "channel": "#alerts"
+        },
+        "email": {
+          "recipients": ["devops@fantasticfour.com"],
+          "smtp": {
+            "host": "smtp.gmail.com",
+            "port": 587
+          }
+        }
+      }
+    }
