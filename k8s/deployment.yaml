@@ -1,75 +1,53 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: fantastic-four
-  namespace: fantastic-four
+  name: fantastic-four-app
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: fantastic-four  
+      app: fantastic-four
   template:
     metadata:
       labels:
-        app: fantastic-four  
-        environment: production  
-        monitoring: enabled
-        version: "1.0.0"
+        app: fantastic-four
     spec:
       containers:
-      - name: fantastic-four
-        image: alexandraqwz/fantastic_four:latest
-        resources:
-          requests:
-            cpu: "100m"
-            memory: "128Mi"
-          limits:
-            cpu: "400m"
-            memory: "256Mi"
-        ports:
-          - containerPort: 3000
-        env:
-        - name: NODE_ENV
-          valueFrom:
-            configMapKeyRef:
-              name: app-config
-              key: NODE_ENV
-        - name: PORT
-          valueFrom:
-            configMapKeyRef:
-              name: app-config
-              key: PORT
-        - name: LOG_LEVEL
-          valueFrom:
-            configMapKeyRef:
-              name: app-config
-              key: LOG_LEVEL
-        - name: POSTGRES_USERNAME
-          valueFrom:
-            secretKeyRef:
-              name: app-secret
-              key: POSTGRES_USER
-        - name: POSTGRES_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: app-secret
-              key: POSTGRES_PASSWORD
-        - name: POSTGRES_DB
-          valueFrom:
-            secretKeyRef:
-              name: app-secret
-              key: POSTGRES_DB
-        - name: DATABASE_URL
-          value: "postgresql://$(POSTGRES_USERNAME):$(POSTGRES_PASSWORD)@postgres-service:5432/$(POSTGRES_DB)"
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 3000
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /health
-            port: 3000
-          initialDelaySeconds: 5
-          periodSeconds: 5
+        - name: nodejs-container
+          image: alexandraqwz/fantastic_four:latest
+          resources:           # WAJIB ADA AGAR HPA JALAN
+            requests:
+              cpu: "100m"      # Jatah CPU minimum (0.1 core)
+            limits:
+              cpu: "400m"
+          ports:
+            - containerPort: 3000
+          env:
+            
+            - name: NODE_ENV
+              value: "development"
+
+            # Mengambil Username dari Secret
+            - name: POSTGRES_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret # Nama yang ada di metadata secret.yaml
+                  key: POSTGRES_USER # Nama kunci di dalam data secret.yaml
+            
+            # Mengambil Password dari Secret
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: POSTGRES_PASSWORD
+            
+            # Mengambil DATABASE dari Secret
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: POSTGRES_DB
+
+            # Membuat DATABASE_URL secara dinamis
+            - name: DATABASE_URL
+              value: "postgresql://$(POSTGRES_USERNAME):$(POSTGRES_PASSWORD)@db:5432/$(POSTGRES_DB)"

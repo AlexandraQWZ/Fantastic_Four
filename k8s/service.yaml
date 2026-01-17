@@ -1,148 +1,24 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: fantastic-four-service
-  namespace: fantastic-four
-  labels:
-    app: fantastic-four
-    component: backend
-    monitoring: enabled
-    environment: production
-  annotations:
-    # ==================== PROMETHEUS MONITORING ====================
-    prometheus.io/scrape: "true"
-    prometheus.io/path: "/metrics"
-    prometheus.io/port: "3000"
-    prometheus.io/scheme: "http"
-    
-    # ==================== LOAD BALANCER CONFIGURATION ====================
-    # Cloud-specific load balancer annotations
-    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
-    service.beta.kubernetes.io/aws-load-balancer-internal: "false"
-    service.beta.kubernetes.io/aws-load-balancer-ssl-cert: "arn:aws:acm:region:account:certificate/id"
-    service.beta.kubernetes.io/aws-load-balancer-ssl-ports: "443"
-    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: "http"
-    service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout: "60"
-    
-    # GCP Load Balancer annotations
-    cloud.google.com/load-balancer-type: "External"
-    networking.gke.io/load-balancer-type: "External"
-    
-    # Azure Load Balancer annotations
-    service.beta.kubernetes.io/azure-load-balancer-internal: "false"
-    
-    # ==================== METRICS & MONITORING ====================
-    prometheus.io/param-scheme: "http"
-    prometheus.io/param-module: "http_2xx"
-    
-    # Custom metrics annotations
-    metrics.company.com/port: "3000"
-    metrics.company.com/path: "/metrics"
-    metrics.company.com/scheme: "http"
-    
-    # Health check configuration
-    external-dns.alpha.kubernetes.io/hostname: "fantastic-four.yourdomain.com"
-    
-    # ==================== PERFORMANCE & SECURITY ====================
-    # Connection settings
-    service.beta.kubernetes.io/aws-load-balancer-connection-draining-enabled: "true"
-    service.beta.kubernetes.io/aws-load-balancer-connection-draining-timeout: "60"
-    
-    # Cross-zone load balancing
-    service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
-    
-    # Proxy protocol (if using SSL termination)
-    service.beta.kubernetes.io/aws-load-balancer-proxy-protocol: "*"
-    
-    # ==================== CUSTOM ANNOTATIONS ====================
-    # For monitoring tools
-    grafana.com/dashboard: "fantastic-four"
-    grafana.com/datasource: "Prometheus"
-    
-    # For logging
-    fluentd-annotation: "true"
-    log-format: "json"
-    
-    # Business/team annotations
-    team: "devops"
-    project: "fantastic-four"
-    version: "1.0.0"
-    
-    # Cost tracking
-    cost-center: "engineering"
-    owner: "fantastic-four-team"
-    
-    # SLA/SLO annotations
-    sla: "99.9"
-    slo.error-rate: "0.1"
-    slo.latency-p95: "2000"
-    
-    # Documentation
-    runbook-url: "https://github.com/your-org/fantastic-four/wiki/Runbook"
-    monitoring-docs: "https://grafana.yourdomain.com/d/fantastic-four"
-
+  name: db # Ini akan jadi HOSTNAME untuk Node.js
 spec:
   selector:
-    app: fantastic-four
-    environment: production
-  
+    app: postgres
   ports:
-    # Main HTTP port
-    - name: http
-      protocol: TCP
-      port: 80
-      targetPort: 3000
-      appProtocol: http
-    
-    # HTTPS port (if using SSL termination)
-    - name: https
-      protocol: TCP
-      port: 443
-      targetPort: 3000
-      appProtocol: https
-    
-    # Metrics port (separate port for metrics)
-    - name: metrics
-      protocol: TCP
-      port: 9090
-      targetPort: 3000
-    
-    # Health check port
-    - name: health
-      protocol: TCP
-      port: 8080
-      targetPort: 3000
-  
-  # Service type
-  type: LoadBalancer
-  
-  # Load balancer IP (optional - for static IP)
-  # loadBalancerIP: "192.168.0.100"
-  
-  # External traffic policy
-  externalTrafficPolicy: Cluster
-  # Options: Cluster (default) or Local
-  # Local preserves client IP but requires healthy nodes
-  
-  # Session affinity
-  sessionAffinity: None
-  # Options: None (default) or ClientIP
-  
-  # Session affinity configuration
-  sessionAffinityConfig:
-    clientIP:
-      timeoutSeconds: 10800
-  
-  # IP families (dual-stack support)
-  ipFamilies:
-    - IPv4
-    # - IPv6  # Enable if needed
-  
-  # Allocate load balancer node ports (for NodePort type)
-  # allocateLoadBalancerNodePorts: true
-  
-  # Load balancer class (for specific LB implementations)
-  # loadBalancerClass: "service.k8s.aws/nlb"
-  
-  # Health check node port (for NodePort/LoadBalancer)
-  # healthCheckNodePort: 32456
+    - protocol: TCP
+      port: 5432
+      targetPort: 5432
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fantastic-four-service
+spec:
+  type: LoadBalancer # Atau LoadBalancer jika di Cloud/Docker Desktop
+  selector:
+    app: fantastic-four # Harus sama dengan label di Deployment Node.js
+  ports:
+    - protocol: TCP
+      port: 80         # Port yang diakses dari luar
+      targetPort: 3000 # Port aplikasi di dalam container

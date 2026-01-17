@@ -1,8 +1,4 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: fantastic-four
-  labels:
-    name: fantastic-four
-    environment: development
-    monitoring: enabled
+  name: uas-devops-fantastic-four
