@@ -10,12 +10,12 @@ Anggota Kelompok:
 3. Calvin Christofel Sibuea
 4. Lampita E.R. Hutasoit
 
-Proyek ini dikembangkan untuk memenuhi Ujian Akhir Semester mata kuliah terkait pengembangan dan deployment aplikasi modern dengan fokus pada Kubernetes, Horizontal Pod Autoscaler (HPA), CI/CD, dan sistem monitoring.
+Proyek ini dikembangkan untuk memenuhi Ujian Akhir Semester (UAS) pada mata kuliah Container Orchestration & DevOps. Fokus utama proyek adalah penerapan Docker, Kubernetes, Horizontal Pod Autoscaler (HPA v2), CI/CD Automation, serta sistem monitoring berbasis Prometheus dan Grafana.
 
 ## 2. Deskripsi Aplikasi
-Fantastic Four Application merupakan aplikasi web backend berbasis Node.js yang dirancang untuk berjalan pada lingkungan containerized dan cloud-native. Aplikasi ini mampu berjalan secara terus-menerus, mudah diperbarui melalui pipeline CI/CD, serta mampu menangani peningkatan beban secara otomatis menggunakan Horizontal Pod Autoscaler.
+Fantastic Four Application merupakan aplikasi web backend berbasis Node.js (Express) yang dirancang menggunakan pendekatan cloud-native dan containerized. Aplikasi ini mendukung deployment terotomatisasi melalui pipeline CI/CD serta mampu menangani peningkatan beban secara dinamis menggunakan Horizontal Pod Autoscaler.
 
-Aplikasi ini terhubung dengan database PostgreSQL dan dilengkapi dengan konfigurasi berbasis ConfigMap dan Secret untuk menjaga keamanan data dan kredensial.
+Aplikasi terhubung dengan database PostgreSQL dan menggunakan Kubernetes Secret untuk pengelolaan kredensial secara aman. Selain itu, aplikasi menyediakan endpoint /metrics untuk integrasi monitoring dan autoscaling.
 
 ## 3. Cara Menjalankan Aplikasi Secara Lokal
 Langkah-langkah menjalankan aplikasi tanpa container:
@@ -43,60 +43,74 @@ Langkah-langkah:
 2. Jalankan container  
    docker run -p 3000:3000 fantastic-four-app
 
-## 5. Arsitektur Sistem
+## 5. Menjalankan Aplikasi Menggunakan Docker Compose
+
+Docker Compose digunakan untuk menjalankan aplikasi beserta database PostgreSQL secara bersamaan.
+
+docker-compose up --build
+
+Akses aplikasi melalui:
+http://localhost:4000
+
+## 6. Arsitektur Sistem
 Arsitektur sistem aplikasi terdiri dari:
 1. Source code yang dikelola menggunakan GitHub.
-2. Docker image yang disimpan di Docker Hub.
+2. Docker image sebagai unit distribusi aplikasi.
 3. Kubernetes cluster sebagai platform orkestrasi container.
-4. Namespace khusus untuk isolasi resource aplikasi.
-5. Deployment dan Service Kubernetes.
-6. PostgreSQL sebagai database aplikasi.
-7. Horizontal Pod Autoscaler untuk autoscaling.
+4. Namespace Kubernetes untuk isolasi resource aplikasi.
+5. Deployment dan Service untuk manajemen aplikasi.
+6. PostgreSQL sebagai database backend.
+7. Horizontal Pod Autoscaler (HPA v2) untuk autoscaling.
 8. CI/CD pipeline menggunakan GitHub Actions.
-9. Sistem monitoring berbasis Kubernetes monitoring stack.
+9. Monitoring stack menggunakan Prometheus dan Grafana.
 
-## 6. Implementasi Kubernetes
-Aplikasi dideploy ke Kubernetes menggunakan beberapa resource utama:
-1. Namespace untuk memisahkan resource aplikasi.
-2. Deployment untuk mengatur lifecycle pod dan rolling update.
-3. Service untuk mengekspos aplikasi.
-4. ConfigMap untuk konfigurasi non-sensitif.
-5. Secret untuk menyimpan kredensial database dan monitoring.
+## 7. Implementasi Kubernetes
+Deployment aplikasi pada Kubernetes menggunakan beberapa resource utama:
+1. Namespace – memisahkan resource aplikasi dari workload lain.
+2. Deployment – mengatur lifecycle pod dan rolling update.
+3. Service (LoadBalancer & ClusterIP) – mengekspos aplikasi dan monitoring.
+4. Secret – menyimpan kredensial database dan monitoring.
+5. PostgreSQL Deployment & Service – sebagai database aplikasi.
 
 Pendekatan ini memastikan aplikasi mudah dikelola, aman, dan scalable.
 
-## 7. Implementasi Horizontal Pod Autoscaler
-Horizontal Pod Autoscaler digunakan untuk menyesuaikan jumlah pod secara otomatis berdasarkan penggunaan CPU.
+Pendekatan ini memastikan aplikasi mudah dikelola, aman, dan scalable.
 
-Konfigurasi HPA mencakup:
-1. Minimum jumlah pod.
-2. Maksimum jumlah pod.
-3. Target utilisasi CPU.
+## 8. Implementasi Horizontal Pod Autoscaler
+Horizontal Pod Autoscaler digunakan untuk menyesuaikan jumlah pod secara otomatis
 
-Ketika terjadi peningkatan beban, Kubernetes secara otomatis menambah jumlah pod, dan akan menguranginya kembali ketika beban menurun.
+berdasarkan metrik berikut:
+1. CPU utilization
+2. Memory utilization
+3. Custom metrics dari Prometheus (request rate, latency, error rate)
 
-## 8. Implementasi CI/CD
-CI/CD diimplementasikan menggunakan GitHub Actions melalui file workflow `deploy.yml`.
+HPA dikonfigurasi menggunakan API autoscaling/v2 dengan batas minimum dan maksimum replica. Kubernetes akan menambah atau mengurangi jumlah pod secara otomatis sesuai beban aplikasi.
+
+## 9. Implementasi CI/CD
+CI/CD diimplementasikan menggunakan GitHub Actions melalui workflow .github/workflows/ci.yml dan `deploy.yml`.
 
 Pipeline berjalan secara otomatis ketika terjadi push ke branch main dengan alur:
 1. Checkout source code.
-2. Build Docker image menggunakan Docker Buildx.
-3. Push image ke Docker Hub.
-4. Konfigurasi akses ke Kubernetes cluster menggunakan kubeconfig.
-5. Update image pada Deployment Kubernetes.
-6. Melakukan rollout dan verifikasi deployment.
+2. Install dependencies
+3. Build Docker image
+4. Push image ke container registry
+5. Deploy atau update image pada Kubernetes Deployment
+6. Melakukan rollout dan verifikasi deployment
 
-Dengan pipeline ini, setiap perubahan kode dapat langsung diterapkan ke cluster Kubernetes secara otomatis.
+Dengan pipeline ini, setiap perubahan kode dapat langsung diterapkan ke cluster Kubernetes secara konsisten.
 
-## 9. Implementasi Monitoring
-Monitoring digunakan untuk memantau kondisi aplikasi dan resource Kubernetes seperti CPU dan memory usage.
+## 10. Implementasi Monitoring
+Monitoring digunakan untuk memantau performa aplikasi dan resource Kubernetes.
 
-Tool monitoring yang digunakan terintegrasi dengan Kubernetes dan mendukung:
-1. Pemantauan performa pod dan node.
-2. Visualisasi metrik aplikasi.
-3. Analisis autoscaling yang dilakukan oleh HPA.
+Monitoring stack yang digunakan:
+1. Prometheus untuk pengumpulan metrics aplikasi dan cluster.
+  * Prometheus untuk pengumpulan metrics aplikasi dan cluster.
+  * Request rate
+  * Error rate
+  * HPA scaling activity
+2. Grafana untuk visualisasi metrics seperti:
 
-Monitoring ini memastikan aplikasi tetap stabil dan berjalan sesuai kebutuhan.
+Monitoring ini memastikan aplikasi tetap stabil dan performanya terpantau dengan baik.
 
 ## 10. Repository dan Referensi
 Repository GitHub:  
@@ -106,16 +120,17 @@ Docker Hub Image:
 https://hub.docker.com/r/username/fantastic_four
 
 Referensi:
-1. Dokumentasi resmi Kubernetes.
-2. Dokumentasi Docker.
-3. Dokumentasi GitHub Actions.
+1. Dokumentasi Kubernetes
+2. Dokumentasi Docker
+3. Dokumentasi GitHub Actions
+4. Dokumentasi Prometheus dan Grafana
 
-## 11. Video Penjelasan Implementasi
+## 12. Video Penjelasan Implementasi
 Video penjelasan implementasi Kubernetes dan aplikasi:  
 [Link Video Deployment Kubernetes]
 
 Video penjelasan implementasi HPA, CI/CD, dan Monitoring:  
 [Link Video HPA, CI/CD, dan Monitoring]
 
-## 12. Penutup
-Melalui proyek ini, kelompok Fantastic Four berhasil menerapkan konsep aplikasi modern berbasis Kubernetes dengan dukungan autoscaling, CI/CD, dan monitoring sesuai dengan kebutuhan sistem yang andal, scalable, dan mudah dikelola.
+## 13. Penutup
+Melalui proyek ini, kelompok Fantastic Four berhasil mengimplementasikan aplikasi backend berbasis Kubernetes dengan dukungan autoscaling, CI/CD automation, serta sistem monitoring. Proyek ini mencerminkan penerapan konsep DevOps dan Cloud Native Application yang scalable, reliable, dan mudah dikelola.
